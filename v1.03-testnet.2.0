@@ -1,0 +1,188 @@
+Updating Ubuntu
+sudo apt-get update && sudo apt-get upgrade -y
+
+
+Installing useful packages
+sudo apt install apt-transport-https net-tools git mc sysstat atop curl tar wget clang pkg-config libssl-dev jq build-essential make ncdu -y
+
+
+Create user masa
+sudo addgroup p2p 
+sudo adduser masa --ingroup p2p --disabled-password --disabled-login --shell /usr/sbin/nologin --gecos ""
+
+
+Install GO 1.17.5
+ver="1.17.5"
+cd ~
+wget --inet4-only "https://golang.org/dl/go$ver.linux-amd64.tar.gz"
+sudo rm -rf /usr/local/go
+sudo tar -C /usr/local -xzf "go$ver.linux-amd64.tar.gz"
+rm "go$ver.linux-amd64.tar.gz"
+echo 'export PATH=$PATH:/usr/local/go/bin:$HOME/go/bin' >> ~/.profile
+source ~/.profile
+echo 'export PATH=$PATH:/usr/local/go/bin:$HOME/go/bin' >> /home/masa/.profile
+
+
+We collect binary packages of the node
+sudo su masa -s /bin/bash
+
+cd ~
+source ~/.profile
+git clone https://github.com/masa-finance/masa-node-v1.0
+cd masa-node-v1.0/src
+make all
+exit
+
+
+install binary packages into the system
+sudo -i 
+
+cp /home/masa/masa-node-v1.0/src/build/bin/* /usr/local/bin
+exit
+
+
+Node initialization
+sudo su masa -s /bin/bash
+
+cd ~
+source ~/.profile
+cd $HOME/masa-node-v1.0
+geth --datadir data init ./network/testnet/genesis.json
+exit
+
+
+Create a service (change NODE_NAME to unique, do not use space < > |)
+sudo -i
+
+NODE_NAME="your node name"
+
+
+in the next block, do not change the name of the node
+tee /etc/systemd/system/masad.service > /dev/null <<EOF
+[Unit]
+Description=MASA
+After=network.target
+[Service]
+Type=simple
+User=masa
+ExecStart=/usr/local/bin/geth \\
+--identity ${NODE_NAME} \\
+--datadir /home/masa/masa-node-v1.0/data \\
+--bootnodes "enode://7612454dd41a6d13138b565a9e14a35bef4804204d92e751cfe2625648666b703525d821f34ffc198fac0d669a12d5f47e7cf15de4ebe65f39822a2523a576c4@81.29.137.40:30300" \\
+--emitcheckpoints \\
+--istanbul.blockperiod 10 \\
+--mine \\
+--miner.threads 1 \\
+--syncmode full \\
+--verbosity 5 \\
+--networkid 190260 \\
+--rpc \\
+--rpccorsdomain "*" \\
+--rpcvhosts "*" \\
+--rpcaddr 127.0.0.1 \\
+--rpcport 8545 \\
+--rpcapi admin,db,eth,debug,miner,net,shh,txpool,personal,web3,quorum,istanbul \\
+--port 30300
+Restart=on-failure
+RestartSec=10
+LimitNOFILE=4096
+Environment="PRIVATE_CONFIG=ignore"
+[Install]
+WantedBy=multi-user.target
+EOF
+exit
+
+
+Starting the service, enabling autoload and checking the status
+sudo systemctl daemon-reload
+sudo systemctl enable masad
+sudo systemctl restart masad
+
+sudo systemctl status masad
+
+
+Update Masa Node to Release v1.03-testnet.2.0
+systemctl stop masad
+sudo su masa -s /bin/bash
+
+
+delete the old coin chain and previously built binary packages then update the repository
+. ~/.profile
+cd ~/masa-node-v1.0
+find data/geth/* -type f -not -name 'nodekey' -delete
+rm -f src/build/bin/*
+git pull
+
+
+build binary packages
+cd ~/masa-node-v1.0/src
+make all
+exit
+
+
+install binary packages into the system
+sudo -i 
+
+cp -f /home/masa/masa-node-v1.0/src/build/bin/* /usr/local/bin
+exit
+
+
+Node initialization
+sudo su masa -s /bin/bash
+
+cd ~
+source ~/.profile
+cd $HOME/masa-node-v1.0
+geth --datadir data init ./network/testnet/genesis.json
+exit
+
+
+Update the service file (change NODE_NAME to unique, do not use space < > |)
+sudo -i
+
+NODE_NAME="your node name"
+
+in the next block, do not change the name of the node
+tee /etc/systemd/system/masad.service > /dev/null <<EOF
+[Unit]
+Description=MASA
+After=network.target
+[Service]
+Type=simple
+User=masa
+ExecStart=/usr/local/bin/geth \\
+--identity ${NODE_NAME} \\
+--datadir /home/masa/masa-node-v1.0/data \\
+--bootnodes "enode://7612454dd41a6d13138b565a9e14a35bef4804204d92e751cfe2625648666b703525d821f34ffc198fac0d669a12d5f47e7cf15de4ebe65f39822a2523a576c4@81.29.137.40:30300" \\
+--emitcheckpoints \\
+--istanbul.blockperiod 10 \\
+--mine \\
+--miner.threads 1 \\
+--syncmode full \\
+--verbosity 5 \\
+--networkid 190260 \\
+--rpc \\
+--rpccorsdomain "*" \\
+--rpcvhosts "*" \\
+--rpcaddr 127.0.0.1 \\
+--rpcport 8545 \\
+--rpcapi admin,db,eth,debug,miner,net,shh,txpool,personal,web3,quorum,istanbul \\
+--port 30300
+Restart=on-failure
+RestartSec=10
+LimitNOFILE=4096
+Environment="PRIVATE_CONFIG=ignore"
+[Install]
+WantedBy=multi-user.target
+EOF
+exit
+
+
+Starting the service, enabling autoload and checking the status
+sudo systemctl daemon-reload
+sudo systemctl enable masad
+sudo systemctl restart masad
+sudo systemctl status masad
+
+
+Done, node updated
